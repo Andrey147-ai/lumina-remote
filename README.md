@@ -25,21 +25,21 @@
 ## 🖥️ Requirements
 
 - **Windows 10 / 11**
-- **Python 3.10+** — [python.org](https://python.org)
+- **Python 3.10+** - [python.org](https://python.org)
 - All devices on the **same Wi-Fi network**
 
 ---
 
 ## 🚀 Installation
 
-### 1 — Clone the repository
+### 1 - Clone the repository
 
 ```bash
 git clone https://github.com/Andrey147-ai/lumina-remote.git
 cd lumina-remote
 ```
 
-### 2 — Create and activate a virtual environment
+### 2 - Create and activate a virtual environment
 
 ```bash
 # Create
@@ -52,13 +52,13 @@ python -m venv .venv
 .venv\Scripts\activate.bat
 ```
 
-### 3 — Install dependencies
+### 3 - Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4 — Set your password *(important!)*
+### 4 - Set your password *(important!)*
 
 Option A — environment variable (recommended):
 
@@ -68,18 +68,18 @@ $env:LUMINA_PASSWORD = "your-secret-password"
 $env:LUMINA_SECRET   = "a-random-flask-secret-key"
 ```
 
-Option B — edit directly in `app.py` (quick test only, not for shared machines):
+Option B - edit directly in `app.py` (quick test only, not for shared machines):
 
 ```python
 ACCESS_PASSWORD = "your-secret-password"
 SECRET_KEY      = "a-random-flask-secret-key"
 ```
 
-### 5 — Customise your apps and links *(optional)*
+### 5 - Customise your apps and links *(optional)*
 
 Open `app.py` and edit the `QUICK_LINKS` and `APP_PATHS` dictionaries at the top of the file to match your own applications and favourite URLs.
 
-### 6 — Run the server
+### 6 - Run the server
 
 ```bash
 python app.py
