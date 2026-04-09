@@ -1,5 +1,5 @@
 """
-Lumina Remote Control v2.0.0 — app.py
+Lumina Remote Control v2.0 — app.py
 Adds: System Monitor (psutil), File Explorer & Downloader, Process Manager (Task Killer).
 """
 
@@ -23,7 +23,7 @@ import ctypes
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-ACCESS_PASSWORD = os.environ.get("LUMINA_PASSWORD", "lumina2026")
+ACCESS_PASSWORD = os.environ.get("LUMINA_PASSWORD", "lumina2024")
 SECRET_KEY      = os.environ.get("LUMINA_SECRET",   "change-me-to-something-random")
 
 # ── Folders exposed in the File Explorer (label → absolute path) ──────────────
@@ -152,6 +152,8 @@ def screenshot():
 # ─── API: Volume ──────────────────────────────────────────────────────────────
 
 def _volume_interface():
+    from comtypes import CoInitialize
+    CoInitialize()
     devices   = AudioUtilities.GetSpeakers()
     interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
     return ctypes.cast(interface, ctypes.POINTER(IAudioEndpointVolume))
