@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lumina Remote v2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0a0f;
+      --surface:  #12121a;
+      --surface2: #1a1a28;
+      --border:   rgba(255,255,255,0.07);
+      --accent:   #7c6af5;
+      --accent2:  #f5c26a;
+      --accent3:  #6af5c2;
+      --danger:   #f56a6a;
+      --text:     #e8e8f0;
+      --muted:    #6b6b88;
+      --radius:   14px;
+      --ease:     0.18s cubic-bezier(.4,0,.2,1);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      padding-bottom: 60px;
+      background-image:
+        linear-gradient(rgba(124,106,245,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,106,245,.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,15,.88);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 13px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 1.1rem; font-weight: 800; }
+    .logo-icon {
+      width: 30px; height: 30px;
+      background: linear-gradient(135deg, var(--accent), var(--accent3));
+      border-radius: 8px; display: grid; place-items: center; font-size: .85rem;
+    }
+    .logo .badge {
+      font-size: .6rem; font-weight: 700; letter-spacing: .1em;
+      background: linear-gradient(90deg, var(--accent), var(--accent3));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      border: 1px solid rgba(124,106,245,.3); border-radius: 4px; padding: 1px 5px;
+    }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent3); box-shadow: 0 0 8px var(--accent3);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+    .btn-logout {
+      font-family: 'Syne', sans-serif; font-size: .72rem; font-weight: 600;
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); border-radius: 8px; padding: 5px 11px; cursor: pointer;
+      transition: var(--ease);
+    }
+    .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── Nav tabs ── */
+    .nav-tabs {
+      display: flex; gap: 4px; overflow-x: auto;
+      padding: 12px 16px 0;
+      max-width: 640px; margin: 0 auto;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex-shrink: 0;
+      font-family: 'Syne', sans-serif; font-size: .72rem; font-weight: 700;
+      letter-spacing: .06em; text-transform: uppercase;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 8px; padding: 7px 14px; cursor: pointer;
+      transition: var(--ease); white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--text); border-color: rgba(255,255,255,.14); }
+    .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* ── Layout ── */
+    main { max-width: 640px; margin: 0 auto; padding: 20px 16px 0; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 22px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--surface2); border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: .76rem;
+      padding: 9px 16px; border-radius: 10px;
+      white-space: nowrap; opacity: 0; z-index: 9999;
+      transition: transform .28s cubic-bezier(.4,0,.2,1), opacity .28s;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    #toast.error { border-left-color: var(--danger); }
+
+    /* ── Section label ── */
+    .section { margin-bottom: 28px; }
+    .section-label {
+      font-size: .65rem; font-weight: 700; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--muted);
+      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+    /* ── Action Buttons ── */
+    .grid   { display: grid; gap: 9px; }
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: repeat(3,1fr); }
+
+    .action-btn {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 7px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px 10px;
+      cursor: pointer; color: var(--text);
+      font-family: 'Syne', sans-serif; font-size: .8rem; font-weight: 600;
+      text-align: center; transition: var(--ease);
+      position: relative; overflow: hidden;
+      user-select: none; -webkit-tap-highlight-color: transparent;
+    }
+    .action-btn::before {
+      content:''; position:absolute; inset:0;
+      background: var(--btn-glow, transparent); opacity:0; transition:opacity .25s;
+    }
+    .action-btn:hover { border-color: var(--btn-accent, var(--accent)); transform: translateY(-2px); }
+    .action-btn:hover::before { opacity: .07; }
+    .action-btn:active { transform: scale(.96); }
+    .action-btn.loading { pointer-events:none; opacity:.55; }
+    .action-btn .icon { font-size:1.5rem; filter: drop-shadow(0 0 5px var(--btn-accent, var(--accent))); }
+
+    .btn-purple { --btn-accent:var(--accent);  --btn-glow:var(--accent); }
+    .btn-gold   { --btn-accent:var(--accent2); --btn-glow:var(--accent2); }
+    .btn-teal   { --btn-accent:var(--accent3); --btn-glow:var(--accent3); }
+    .btn-red    { --btn-accent:var(--danger);  --btn-glow:var(--danger); }
+
+    .action-btn.wide {
+      flex-direction: row; justify-content: flex-start;
+      gap: 12px; padding: 14px 18px;
+    }
+    .action-btn.wide .icon { font-size:1.2rem; }
+    .action-btn.wide .label { text-align:left; }
+    .action-btn.wide .sublabel {
+      font-size:.68rem; font-weight:400; color:var(--muted);
+      font-family:'JetBrains Mono',monospace;
+    }
+
+    /* ── Screenshot ── */
+    #screenshot-wrap {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      min-height: 72px; display: flex; align-items: center; justify-content: center;
+    }
+    #screenshot-wrap img { width:100%; display:block; }
+    #screenshot-placeholder { color:var(--muted); font-size:.78rem; font-family:'JetBrains Mono',monospace; }
+
+    /* ── System Monitor ── */
+    .monitor-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 12px; text-align: center;
+    }
+    .stat-card .stat-icon { font-size: 1.4rem; margin-bottom: 6px; }
+    .stat-card .stat-value {
+      font-size: 1.3rem; font-weight: 800;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text);
+    }
+    .stat-card .stat-label {
+      font-size: .62rem; color: var(--muted);
+      letter-spacing: .08em; text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .stat-card .stat-sub {
+      font-size: .68rem; color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      margin-top: 3px;
+    }
+
+    /* progress bar inside stat card */
+    .bar-wrap {
+      width: 100%; height: 4px;
+      background: rgba(255,255,255,.07);
+      border-radius: 2px; overflow: hidden;
+      margin-top: 7px;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 2px;
+      background: var(--accent3);
+      transition: width .5s ease;
+    }
+    .bar-fill.warn  { background: var(--accent2); }
+    .bar-fill.crit  { background: var(--danger); }
+
+    .monitor-refresh {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .monitor-refresh span {
+      font-size: .68rem; color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .btn-refresh {
+      font-family: 'Syne', sans-serif; font-size: .7rem; font-weight: 700;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--accent3); border-radius: 7px; padding: 5px 11px;
+      cursor: pointer; transition: var(--ease);
+    }
+    .btn-refresh:hover { border-color: var(--accent3); }
+
+    /* ── File Explorer ── */
+    .folder-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .folder-tab {
+      font-family: 'Syne', sans-serif; font-size: .72rem; font-weight: 700;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--muted); border-radius: 8px; padding: 6px 13px;
+      cursor: pointer; transition: var(--ease);
+    }
+    .folder-tab.active, .folder-tab:hover { border-color: var(--accent2); color: var(--accent2); }
+
+    .file-list {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .file-list-placeholder {
+      padding: 28px; text-align: center;
+      color: var(--muted); font-size: .78rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .file-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      transition: background var(--ease);
+    }
+    .file-item:last-child { border-bottom: none; }
+    .file-item:hover { background: rgba(255,255,255,.03); }
+    .file-icon { font-size: 1rem; flex-shrink: 0; }
+    .file-name {
+      flex: 1; font-size: .8rem; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .file-size {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .68rem; color: var(--muted); flex-shrink: 0;
+    }
+    .btn-dl {
+      font-size: .65rem; font-weight: 700; font-family: 'Syne', sans-serif;
+      background: none; border: 1px solid rgba(124,106,245,.35);
+      color: var(--accent); border-radius: 6px; padding: 4px 9px;
+      cursor: pointer; transition: var(--ease); flex-shrink: 0;
+      text-decoration: none;
+    }
+    .btn-dl:hover { background: rgba(124,106,245,.12); border-color: var(--accent); }
+
+    /* ── Process Manager ── */
+    .proc-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .proc-list {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .proc-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      transition: background var(--ease);
+    }
+    .proc-item:last-child { border-bottom: none; }
+    .proc-item:hover { background: rgba(255,255,255,.03); }
+    .proc-rank {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .65rem; color: var(--muted); width: 16px; text-align: center; flex-shrink: 0;
+    }
+    .proc-name { flex: 1; font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .proc-pid  { font-family: 'JetBrains Mono', monospace; font-size: .65rem; color: var(--muted); flex-shrink: 0; }
+    .proc-mem  {
+      font-family: 'JetBrains Mono', monospace; font-size: .72rem;
+      color: var(--accent2); flex-shrink: 0; min-width: 52px; text-align: right;
+    }
+    .btn-kill {
+      font-size: .65rem; font-weight: 700; font-family: 'Syne', sans-serif;
+      background: none; border: 1px solid rgba(245,106,106,.35);
+      color: var(--danger); border-radius: 6px; padding: 4px 9px;
+      cursor: pointer; transition: var(--ease); flex-shrink: 0;
+    }
+    .btn-kill:hover { background: rgba(245,106,106,.12); border-color: var(--danger); }
+    .btn-kill:disabled { opacity: .4; pointer-events: none; }
+
+    .proc-empty {
+      padding: 28px; text-align: center;
+      color: var(--muted); font-size: .78rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 380px) {
+      .monitor-grid { grid-template-columns: 1fr 1fr; }
+      .grid-3       { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    Lumina &nbsp;<span class="badge">v2.0 PRO</span>
+  </div>
+  <div class="header-right">
+    <div class="status-dot" title="Connected"></div>
+    <button class="btn-logout" onclick="location='/logout'">Logout</button>
+  </div>
+</header>
+
+<!-- Tab navigation -->
+<div class="nav-tabs">
+  <button class="tab-btn active" onclick="switchTab('control',this)">🎮 Control</button>
+  <button class="tab-btn"        onclick="switchTab('monitor',this)">📊 Monitor</button>
+  <button class="tab-btn"        onclick="switchTab('files',this)">📁 Files</button>
+  <button class="tab-btn"        onclick="switchTab('processes',this)">⚙️ Processes</button>
+</div>
+
+<main>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 1: CONTROL (original features)
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-control" class="tab-panel active">
+
+    <section class="section">
+      <div class="section-label">Quick Links</div>
+      <div class="grid grid-2">
+        {% for label, url in links.items() %}
+        <button class="action-btn btn-purple" onclick="openLink('{{ label }}',this)">
+          <span class="icon">
+            {% if 'github'   in label|lower %}🐙
+            {% elif 'youtube' in label|lower %}▶️
+            {% elif 'host'    in label|lower %}🖥️
+            {% else %}🔗{% endif %}
+          </span>
+          <span>{{ label }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-label">Launch Apps</div>
+      <div class="grid grid-2">
+        {% for app_name in apps %}
+        <button class="action-btn btn-teal" onclick="launchApp('{{ app_name }}',this)">
+          <span class="icon">
+            {% if 'telegram' in app_name|lower %}✈️
+            {% elif 'code'    in app_name|lower %}🧑‍💻
+            {% elif 'notepad' in app_name|lower %}📝
+            {% elif 'explorer'in app_name|lower %}📁
+            {% else %}🚀{% endif %}
+          </span>
+          <span>{{ app_name }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-label">Volume</div>
+      <div class="grid grid-3">
+        <button class="action-btn btn-gold" onclick="volumeCtrl('down',this)">
+          <span class="icon">🔉</span><span>Vol −10%</span>
+        </button>
+        <button class="action-btn btn-gold" onclick="volumeCtrl('mute',this)">
+          <span class="icon">🔇</span><span>Mute</span>
+        </button>
+        <button class="action-btn btn-gold" onclick="volumeCtrl('up',this)">
+          <span class="icon">🔊</span><span>Vol +10%</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-label">Screenshot</div>
+      <div id="screenshot-wrap">
+        <span id="screenshot-placeholder">— No screenshot taken yet —</span>
+      </div>
+      <button class="action-btn btn-purple wide" style="margin-top:9px;width:100%"
+              onclick="takeScreenshot(this)">
+        <span class="icon">📸</span><span>Capture Screen</span>
+      </button>
+    </section>
+
+    <section class="section">
+      <div class="section-label">System Controls</div>
+      <div class="grid grid-2">
+        <button class="action-btn wide btn-teal" onclick="sysCtrl('lock',this)">
+          <span class="icon">🔒</span>
+          <div class="label">Lock PC<div class="sublabel">Win + L</div></div>
+        </button>
+        <button class="action-btn wide btn-teal" onclick="sysCtrl('sleep',this)">
+          <span class="icon">💤</span>
+          <div class="label">Sleep<div class="sublabel">Low power</div></div>
+        </button>
+        <button class="action-btn wide btn-red"
+                onclick="confirmSys('restart','⚠️ Restart in 10 s — proceed?',this)">
+          <span class="icon">🔄</span>
+          <div class="label">Restart<div class="sublabel">10 s delay</div></div>
+        </button>
+        <button class="action-btn wide btn-red"
+                onclick="confirmSys('shutdown','⚠️ Shutdown in 10 s — proceed?',this)">
+          <span class="icon">⏻</span>
+          <div class="label">Shutdown<div class="sublabel">10 s delay</div></div>
+        </button>
+      </div>
+      <div class="grid" style="margin-top:9px">
+        <button class="action-btn wide btn-purple" onclick="sysCtrl('abort',this)">
+          <span class="icon">🛑</span>
+          <div class="label">Abort Shutdown / Restart<div class="sublabel">Cancel pending action</div></div>
+        </button>
+      </div>
+    </section>
+  </div><!-- /tab-control -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 2: SYSTEM MONITOR
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-monitor" class="tab-panel">
+    <section class="section">
+      <div class="monitor-refresh">
+        <span id="monitor-updated">Not loaded yet</span>
+        <button class="btn-refresh" onclick="loadMonitor()">↻ Refresh</button>
+      </div>
+      <div class="monitor-grid">
+
+        <!-- CPU -->
+        <div class="stat-card">
+          <div class="stat-icon">🖥️</div>
+          <div class="stat-value" id="cpu-pct">—</div>
+          <div class="stat-label">CPU</div>
+          <div class="stat-sub" id="cpu-sub">Usage</div>
+          <div class="bar-wrap"><div class="bar-fill" id="cpu-bar" style="width:0%"></div></div>
+        </div>
+
+        <!-- RAM -->
+        <div class="stat-card">
+          <div class="stat-icon">💾</div>
+          <div class="stat-value" id="ram-pct">—</div>
+          <div class="stat-label">RAM</div>
+          <div class="stat-sub" id="ram-sub">Used / Total</div>
+          <div class="bar-wrap"><div class="bar-fill" id="ram-bar" style="width:0%"></div></div>
+        </div>
+
+        <!-- Disk -->
+        <div class="stat-card">
+          <div class="stat-icon">💿</div>
+          <div class="stat-value" id="disk-pct">—</div>
+          <div class="stat-label">Disk</div>
+          <div class="stat-sub" id="disk-sub">Used / Total</div>
+          <div class="bar-wrap"><div class="bar-fill" id="disk-bar" style="width:0%"></div></div>
+        </div>
+
+      </div>
+    </section>
+  </div><!-- /tab-monitor -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 3: FILE EXPLORER
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-files" class="tab-panel">
+    <section class="section">
+      <div class="section-label">Browse Folders</div>
+      <div class="folder-tabs" id="folder-tabs">
+        {% for fname in folders %}
+        <button class="folder-tab" onclick="loadFolder('{{ fname }}',this)">
+          📂 {{ fname }}
+        </button>
+        {% endfor %}
+      </div>
+      <div class="file-list" id="file-list">
+        <div class="file-list-placeholder">← Select a folder to browse</div>
+      </div>
+    </section>
+  </div><!-- /tab-files -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB 4: PROCESS MANAGER
+  ══════════════════════════════════════════════════════════ -->
+  <div id="tab-processes" class="tab-panel">
+    <section class="section">
+      <div class="proc-header">
+        <div class="section-label" style="margin-bottom:0">Top 10 by RAM</div>
+        <button class="btn-refresh" onclick="loadProcesses()">↻ Refresh</button>
+      </div>
+      <div class="proc-list" id="proc-list">
+        <div class="proc-empty">Press Refresh to load processes</div>
+      </div>
+    </section>
+  </div><!-- /tab-processes -->
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+/* ── Toast ─────────────────────────────────────────────────────── */
+const toastEl = document.getElementById('toast');
+let toastTmr  = null;
+function showToast(msg, err = false) {
+  clearTimeout(toastTmr);
+  toastEl.textContent = msg;
+  toastEl.className   = 'show' + (err ? ' error' : '');
+  toastTmr = setTimeout(() => toastEl.className = '', 3200);
+}
+
+/* ── Fetch helpers ──────────────────────────────────────────────── */
+async function post(url, body = {}) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return r.json();
+}
+async function get(url) {
+  const r = await fetch(url);
+  return r.json();
+}
+function spin(btn, fn) {
+  btn.classList.add('loading');
+  fn().finally(() => btn.classList.remove('loading'));
+}
+
+/* ── Tab switching ──────────────────────────────────────────────── */
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'monitor')   loadMonitor();
+  if (id === 'processes') loadProcesses();
+}
+
+/* ── Control actions ────────────────────────────────────────────── */
+function openLink(label, btn) {
+  spin(btn, async () => {
+    const d = await post('/api/open-url', { label });
+    showToast(d.ok ? `🔗 ${d.message}` : `❌ ${d.error}`, !d.ok);
+  });
+}
+function launchApp(app, btn) {
+  spin(btn, async () => {
+    const d = await post('/api/launch-app', { app });
+    showToast(d.ok ? `🚀 ${d.message}` : `❌ ${d.error}`, !d.ok);
+  });
+}
+function volumeCtrl(action, btn) {
+  spin(btn, async () => {
+    const d = await post(`/api/volume/${action}`);
+    showToast(d.ok ? `🔊 ${d.message}` : `❌ ${d.error}`, !d.ok);
+  });
+}
+async function takeScreenshot(btn) {
+  btn.classList.add('loading');
+  try {
+    const res = await fetch('/api/screenshot');
+    if (!res.ok) throw new Error();
+    const url = URL.createObjectURL(await res.blob());
+    document.getElementById('screenshot-wrap').innerHTML =
+      `<img src="${url}" alt="Screenshot"/>`;
+    showToast('📸 Screenshot captured');
+  } catch { showToast('❌ Screenshot failed', true); }
+  finally  { btn.classList.remove('loading'); }
+}
+function sysCtrl(action, btn) {
+  spin(btn, async () => {
+    const d = await post(`/api/system/${action}`);
+    showToast(d.ok ? `✅ ${d.message}` : `❌ ${d.error}`, !d.ok);
+  });
+}
+function confirmSys(action, msg, btn) {
+  if (confirm(msg)) sysCtrl(action, btn);
+}
+
+/* ── System Monitor ─────────────────────────────────────────────── */
+function barClass(pct) {
+  if (pct >= 85) return 'crit';
+  if (pct >= 65) return 'warn';
+  return '';
+}
+async function loadMonitor() {
+  const d = await get('/api/monitor/stats');
+  if (!d.ok) { showToast('❌ Monitor error', true); return; }
+
+  // CPU
+  document.getElementById('cpu-pct').textContent  = d.cpu.percent + '%';
+  document.getElementById('cpu-sub').textContent  = 'Usage';
+  const cpuBar = document.getElementById('cpu-bar');
+  cpuBar.style.width = d.cpu.percent + '%';
+  cpuBar.className   = 'bar-fill ' + barClass(d.cpu.percent);
+
+  // RAM
+  document.getElementById('ram-pct').textContent  = d.ram.percent + '%';
+  document.getElementById('ram-sub').textContent  = `${d.ram.used_gb} / ${d.ram.total_gb} GB`;
+  const ramBar = document.getElementById('ram-bar');
+  ramBar.style.width = d.ram.percent + '%';
+  ramBar.className   = 'bar-fill ' + barClass(d.ram.percent);
+
+  // Disk
+  document.getElementById('disk-pct').textContent  = d.disk.percent + '%';
+  document.getElementById('disk-sub').textContent  = `${d.disk.used_gb} / ${d.disk.total_gb} GB`;
+  const diskBar = document.getElementById('disk-bar');
+  diskBar.style.width = d.disk.percent + '%';
+  diskBar.className   = 'bar-fill ' + barClass(d.disk.percent);
+
+  const now = new Date();
+  document.getElementById('monitor-updated').textContent =
+    `Updated ${now.toLocaleTimeString()}`;
+}
+
+/* ── File Explorer ──────────────────────────────────────────────── */
+let activeFolder = null;
+async function loadFolder(folder, btn) {
+  document.querySelectorAll('.folder-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeFolder = folder;
+
+  const list = document.getElementById('file-list');
+  list.innerHTML = '<div class="file-list-placeholder">Loading…</div>';
+
+  const d = await post('/api/files/list', { folder });
+  if (!d.ok) {
+    list.innerHTML = `<div class="file-list-placeholder">❌ ${d.error}</div>`;
+    return;
+  }
+  if (!d.entries.length) {
+    list.innerHTML = '<div class="file-list-placeholder">Folder is empty</div>';
+    return;
+  }
+
+  list.innerHTML = d.entries.map(e => {
+    const icon = e.is_file ? fileIcon(e.name) : '📁';
+    const size = e.is_file ? `<span class="file-size">${formatKB(e.size_kb)}</span>` : '';
+    const dlBtn = e.is_file
+      ? `<a class="btn-dl"
+            href="/api/files/download?folder=${encodeURIComponent(folder)}&name=${encodeURIComponent(e.name)}"
+            download="${e.name}">⬇ DL</a>`
+      : '';
+    return `
+      <div class="file-item">
+        <span class="file-icon">${icon}</span>
+        <span class="file-name" title="${e.name}">${e.name}</span>
+        ${size}
+        ${dlBtn}
+      </div>`;
+  }).join('');
+}
+
+function fileIcon(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  const map = {
+    pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊',
+    ppt:'📊', pptx:'📊', zip:'🗜️', rar:'🗜️', '7z':'🗜️',
+    mp4:'🎬', mkv:'🎬', avi:'🎬', mp3:'🎵', wav:'🎵',
+    jpg:'🖼️', jpeg:'🖼️', png:'🖼️', gif:'🖼️', webp:'🖼️',
+    exe:'⚙️', msi:'⚙️', py:'🐍', js:'📜', ts:'📜',
+    html:'🌐', css:'🎨', json:'📋', txt:'📄',
+  };
+  return map[ext] || '📄';
+}
+function formatKB(kb) {
+  if (kb === null) return '';
+  if (kb >= 1024) return (kb / 1024).toFixed(1) + ' MB';
+  return kb.toFixed(0) + ' KB';
+}
+
+/* ── Process Manager ────────────────────────────────────────────── */
+async function loadProcesses() {
+  const list = document.getElementById('proc-list');
+  list.innerHTML = '<div class="proc-empty">Loading…</div>';
+  const d = await get('/api/processes/list');
+  if (!d.ok || !d.processes.length) {
+    list.innerHTML = '<div class="proc-empty">No data</div>';
+    return;
+  }
+  list.innerHTML = d.processes.map((p, i) => `
+    <div class="proc-item" id="proc-${p.pid}">
+      <span class="proc-rank">${i + 1}</span>
+      <span class="proc-name" title="${p.name}">${p.name}</span>
+      <span class="proc-pid">PID ${p.pid}</span>
+      <span class="proc-mem">${p.mem_mb} MB</span>
+      <button class="btn-kill" onclick="killProcess(${p.pid},this)">✕ Kill</button>
+    </div>`).join('');
+}
+
+async function killProcess(pid, btn) {
+  if (!confirm(`Kill PID ${pid}?`)) return;
+  btn.disabled = true;
+  const d = await post('/api/processes/kill', { pid });
+  if (d.ok) {
+    showToast(`✅ ${d.message}`);
+    const row = document.getElementById('proc-' + pid);
+    if (row) {
+      row.style.opacity = '.35';
+      setTimeout(() => row.remove(), 800);
+    }
+  } else {
+    showToast(`❌ ${d.error}`, true);
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
