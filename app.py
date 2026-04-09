@@ -152,12 +152,13 @@ def screenshot():
 # ─── API: Volume ──────────────────────────────────────────────────────────────
 
 def _volume_interface():
-    from comtypes import CoInitialize
+    from comtypes import CoInitialize, CLSCTX_ALL
     CoInitialize()
-    devices   = AudioUtilities.GetSpeakers()
-    interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+    devices = AudioUtilities.GetSpeakers()
+    interface = devices._dev.Activate(
+        IAudioEndpointVolume._iid_, CLSCTX_ALL, None
+    )
     return ctypes.cast(interface, ctypes.POINTER(IAudioEndpointVolume))
-
 
 @app.route("/api/volume/<action>", methods=["POST"])
 @api_auth
@@ -314,6 +315,8 @@ def process_kill():
     except psutil.AccessDenied:
         return jsonify({"ok": False, "error": "Access denied — run as Administrator"}), 403
     except Exception as exc:
+        import traceback
+        traceback.print_exc()
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
