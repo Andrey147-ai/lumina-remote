@@ -1,6 +1,7 @@
 # ⚡ Lumina Remote Control v2.1.0 PRO
 
 > A sleek, locally-hosted web dashboard that turns your phone into a full PC remote — with real-time System Monitoring, File Explorer, Process Manager, and a System Tray icon.
+> 🌐 **Website**: https://andrey147-ai.github.io/lumina-remote
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-3.x-black?logo=flask)
