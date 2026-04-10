@@ -1,11 +1,12 @@
 """
-Lumina Remote Control v2.0 — app.py
-Adds: System Monitor (psutil), File Explorer & Downloader, Process Manager (Task Killer).
+Lumina Remote Control v2.1.0 — app.py
+Adds: System tray icon with Open Dashboard / Exit menu.
 """
 
 import io
 import os
 import subprocess
+import threading
 import webbrowser
 from functools import wraps
 from pathlib import Path
@@ -13,6 +14,8 @@ from typing import Callable
 
 import psutil
 import pyautogui
+import pystray
+from PIL import Image, ImageDraw
 from flask import (Flask, Response, jsonify, redirect, render_template,
                    request, send_from_directory, session, url_for)
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
@@ -26,29 +29,26 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ACCESS_PASSWORD = os.environ.get("LUMINA_PASSWORD", "lumina2024")
 SECRET_KEY      = os.environ.get("LUMINA_SECRET",   "change-me-to-something-random")
 
-# ── Folders exposed in the File Explorer (label → absolute path) ──────────────
 EXPLORER_FOLDERS: dict[str, str] = {
     "Downloads": os.path.expanduser("~/Downloads"),
     "Desktop":   os.path.expanduser("~/Desktop"),
     "Documents": os.path.expanduser("~/Documents"),
-    # Add your own:
-    # "Projects": r"C:\Users\Admin\Projects",
 }
 
-# ── Quick Links ───────────────────────────────────────────────────────────────
 QUICK_LINKS: dict[str, str] = {
     "Hosting Panel": "https://hpanel.hostinger.com",
     "GitHub":        "https://github.com",
     "YouTube":       "https://youtube.com",
 }
 
-# ── App Paths ─────────────────────────────────────────────────────────────────
 APP_PATHS: dict[str, list[str]] = {
     "Telegram":  [r"C:\Users\%USERNAME%\AppData\Roaming\Telegram Desktop\Telegram.exe"],
     "VS Code":   [r"C:\Users\%USERNAME%\AppData\Local\Programs\Microsoft VS Code\Code.exe"],
     "Notepad":   ["notepad.exe"],
     "Explorer":  ["explorer.exe"],
 }
+
+PORT = 5000
 
 # ─── Flask App ────────────────────────────────────────────────────────────────
 
@@ -152,13 +152,19 @@ def screenshot():
 # ─── API: Volume ──────────────────────────────────────────────────────────────
 
 def _volume_interface():
-    from comtypes import CoInitialize, CLSCTX_ALL
-    CoInitialize()
-    devices = AudioUtilities.GetSpeakers()
-    interface = devices._dev.Activate(
-        IAudioEndpointVolume._iid_, CLSCTX_ALL, None
-    )
-    return ctypes.cast(interface, ctypes.POINTER(IAudioEndpointVolume))
+    try:
+        from comtypes import CoInitialize
+        CoInitialize()
+        devices = AudioUtilities.GetSpeakers()
+        interface = devices._dev.Activate(
+            IAudioEndpointVolume._iid_, CLSCTX_ALL, None
+        )
+        return ctypes.cast(interface, ctypes.POINTER(IAudioEndpointVolume))
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        raise
+
 
 @app.route("/api/volume/<action>", methods=["POST"])
 @api_auth
@@ -182,6 +188,8 @@ def volume(action: str):
             return jsonify({"ok": False, "error": "Unknown action"}), 400
         return jsonify({"ok": True, "message": msg})
     except Exception as exc:
+        import traceback
+        traceback.print_exc()
         return jsonify({"ok": False, "error": str(exc)}), 500
 
 
@@ -206,10 +214,6 @@ def system_control(action: str):
     except subprocess.CalledProcessError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
 
-
-# =============================================================================
-#  v2.0 NEW MODULES
-# =============================================================================
 
 # ─── API: System Monitor ──────────────────────────────────────────────────────
 
@@ -315,12 +319,56 @@ def process_kill():
     except psutil.AccessDenied:
         return jsonify({"ok": False, "error": "Access denied — run as Administrator"}), 403
     except Exception as exc:
-        import traceback
-        traceback.print_exc()
         return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+# ─── System Tray ──────────────────────────────────────────────────────────────
+
+def _create_tray_icon() -> Image.Image:
+    """Draw a simple lightning bolt icon for the tray."""
+    size = 64
+    img  = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    # Purple circle background
+    draw.ellipse([2, 2, size - 2, size - 2], fill=(124, 106, 245, 255))
+    # White lightning bolt
+    bolt = [(38, 6), (22, 34), (32, 34), (26, 58), (46, 28), (34, 28), (38, 6)]
+    draw.polygon(bolt, fill=(255, 255, 255, 255))
+    return img
+
+
+def _open_dashboard(icon, item):
+    webbrowser.open(f"http://127.0.0.1:{PORT}")
+
+
+def _exit_app(icon, item):
+    icon.stop()
+    os._exit(0)
+
+
+def _run_tray():
+    icon = pystray.Icon(
+        name="Lumina Remote",
+        icon=_create_tray_icon(),
+        title="Lumina Remote — Running on port 5000",
+        menu=pystray.Menu(
+            pystray.MenuItem("⚡ Open Dashboard", _open_dashboard, default=True),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("✕ Exit", _exit_app),
+        ),
+    )
+    icon.run()
 
 
 # ─── Entry Point ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    # Start tray icon in a separate thread
+    tray_thread = threading.Thread(target=_run_tray, daemon=True)
+    tray_thread.start()
+
+    # Open browser automatically on launch
+    threading.Timer(1.5, lambda: webbrowser.open(f"http://127.0.0.1:{PORT}")).start()
+
+    # Start Flask server
+    app.run(host="0.0.0.0", port=PORT, debug=False)
